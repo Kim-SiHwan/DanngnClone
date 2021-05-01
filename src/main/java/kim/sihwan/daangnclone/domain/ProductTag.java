@@ -12,25 +12,26 @@ import javax.persistence.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductAlbum {
+public class ProductTag {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_album_id")
+    @Column(name = "product_tag_id")
     private Long id;
-    private String url;
-    private String filename;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
     private Product product;
 
-    @Builder
-    public ProductAlbum(String url, String filename){
-        this.url = url;
-        this.filename = filename;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id")
+    private Tag tag;
+
+    public void addProduct(Product product) {
+        this.product = product;
+        this.product.getProductTags().add(this);
     }
 
-    public void addProduct(Product product){
-        this.product = product;
-        this.product.getProductAlbums().add(this);
+    public void addTag(Tag tag){
+        this.tag = tag;
     }
 }

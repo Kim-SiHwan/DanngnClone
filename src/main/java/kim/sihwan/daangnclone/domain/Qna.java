@@ -1,11 +1,12 @@
 package kim.sihwan.daangnclone.domain;
 
-
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
 import javax.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -13,29 +14,38 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Comment {
+public class Qna {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "comment_id")
+    @Column(name = "qna_id")
     private Long id;
-    private String username;
+    private String title;
     private String content;
+    private boolean visited;
+    private boolean answer;
     private LocalDateTime createDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Board board;
+    private Member member;
+
+    public void visitedQna(){
+        this.visited=true;
+    }
+
+    public void answeredQna(){
+        this.answer=true;
+    }
 
     @Builder
-    public Comment (String username, String content){
-        this.username = username;
+    public Qna(String title, String content, boolean visited, boolean answer) {
+        this.title = title;
         this.content = content;
+        this.visited = visited;
+        this.answer = answer;
         this.createDate = LocalDateTime.now();
     }
 
-    public void addBoard(Board board){
-        this.board = board;
-        this.board.getComments().add(this);
+    public void addMember(Member member) {
+        this.member = member;
     }
-
-
 }

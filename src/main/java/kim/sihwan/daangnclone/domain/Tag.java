@@ -1,5 +1,6 @@
 package kim.sihwan.daangnclone.domain;
 
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,16 +12,17 @@ import javax.persistence.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class QnA {
+public class Tag {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "qna_id")
+    @Column(name = "tag_id")
     private Long id;
-    private String title;
-    private String content;
-    private boolean visited;
-    private boolean answer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Member member;
+    private String tag;
+
+    @Builder
+    public Tag (String tag){
+        this.tag=tag;
+
+    }
 }

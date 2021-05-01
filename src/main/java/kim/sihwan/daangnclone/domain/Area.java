@@ -24,6 +24,7 @@ public class Area {
     private String lat;
     private String lng;
 
+
     @Builder
     public Area(String address, String city, String gu, String dong, String lat, String lng){
         this.address=address;
@@ -33,4 +34,6 @@ public class Area {
         this.lat=lat;
         this.lng=lng;
     }
+
+
 }

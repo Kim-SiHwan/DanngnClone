@@ -12,24 +12,22 @@ import javax.persistence.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SelectedArea {
+public class Follow {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "selected_area_id")
+    @Column(name = "follow_id")
     private Long id;
-    private String place;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Member member;
+    private Member fromMember;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    private Area area;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Member toMember;
 
-    public void addMember(Member member){
-        this.member = member;
+    public void addFromMember(Member member){
+        this.fromMember = member;
     }
-    public void addArea(Area area) {
-        this.area = area;
-
+    public void addToMember(Member member){
+        this.toMember = member;
     }
 }

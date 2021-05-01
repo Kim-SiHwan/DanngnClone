@@ -1,6 +1,5 @@
 package kim.sihwan.daangnclone.domain;
 
-
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,24 +11,24 @@ import javax.persistence.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SelectedArea {
+public class ProductInterested {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "selected_area_id")
+    @Column(name = "product_interested_id")
     private Long id;
-    private String place;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Member member;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    private Area area;
-
+    public void addProduct(Product product){
+        this.product=product;
+    }
     public void addMember(Member member){
-        this.member = member;
+        this.member=member;
     }
-    public void addArea(Area area) {
-        this.area = area;
 
-    }
+
 }

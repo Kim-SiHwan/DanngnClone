@@ -22,13 +22,15 @@ public class Member {
     private String username;
     private String password;
     private String nickname;
+    private String area;
     private String role;
 
     @Builder
-    public Member(String username, String password, String nickname, String role) {
+    public Member(String username, String password, String nickname, String area, String role) {
         this.username = username;
         this.password = password;
         this.nickname = nickname;
+        this.area = area;
         this.role = role;
     }
 }

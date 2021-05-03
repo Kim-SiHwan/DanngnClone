@@ -1,13 +1,11 @@
 package kim.sihwan.daangnclone.service;
 
-import kim.sihwan.daangnclone.domain.Member;
-import kim.sihwan.daangnclone.domain.Product;
-import kim.sihwan.daangnclone.domain.ProductTag;
-import kim.sihwan.daangnclone.domain.SelectedArea;
+import kim.sihwan.daangnclone.domain.*;
 import kim.sihwan.daangnclone.dto.product.ProductInterestedRequestDto;
 import kim.sihwan.daangnclone.dto.product.ProductListResponseDto;
 import kim.sihwan.daangnclone.dto.product.ProductRequestDto;
 import kim.sihwan.daangnclone.dto.product.ProductResponseDto;
+import kim.sihwan.daangnclone.repository.InterestedRepository;
 import kim.sihwan.daangnclone.repository.MemberRepository;
 import kim.sihwan.daangnclone.repository.ProductRepository;
 import kim.sihwan.daangnclone.repository.SelectedAreaRepository;
@@ -31,6 +29,7 @@ public class ProductService {
     private final MemberRepository memberRepository;
     private final ProductTagService tagService;
     private final SelectedAreaRepository selectedAreaRepository;
+    private final InterestedRepository interestedRepository;
     private final RedisTemplate redisTemplate;
 
 
@@ -50,24 +49,23 @@ public class ProductService {
         return product;
     }
 
-    public String tt(Long memberId, Long productId){
-        SetOperations<String,Long> setOperations = redisTemplate.opsForSet();
+    public String addInterested(Long memberId, Long productId){
         String msg= "존재하지 않는 값이라 추가했음";
-        if(checkSet(productId,memberId)){
-            setOperations.remove("test::interested::product::"+productId,memberId);
+        ProductInterested interested = interestedRepository.findByMemberIdAndProductId(memberId,productId);
+        if(interested != null){
+            interestedRepository.delete(interested);
             msg="이미 존재하는 값이라 삭제했음";
             return msg;
         }
-        setOperations.add("test::interested::product::"+productId,memberId);
+
+        Product product = productRepository.findById(productId).orElseThrow(NoSuchElementException::new);
+        Member member = memberRepository.findById(memberId).orElseThrow(NoSuchElementException::new);
+        ProductInterested productInterested = new ProductInterested();
+        productInterested.addMember(member);
+        productInterested.addProduct(product);
+        interestedRepository.save(productInterested);
         return msg;
     }
-
-    public boolean checkSet(Long productId, Long memberId){
-        SetOperations<String,Long> setOperations = redisTemplate.opsForSet();
-
-        return setOperations.isMember("test::interested::product::"+productId,memberId);
-    }
-
 
 
     public List<Product> findAll(){
@@ -83,6 +81,7 @@ public class ProductService {
         System.out.println(selectedArea.getArea().getDong());
         ValueOperations<String,List<String>> vo = redisTemplate.opsForValue();
         System.out.println(vo.get("a"));
+        Long memberId = member.getId();
         List<ProductListResponseDto> result = new ArrayList<>();
         List<String> al = new ArrayList<>();
 
@@ -104,7 +103,7 @@ public class ProductService {
             result.addAll(productRepository.findAllByArea(dong)
                     .stream()
                     .map(m-> {
-                        if(setOperations.isMember("test::interested::product::"+m.getId(),1L)){
+                        if(interestedRepository.findByMemberIdAndProductId(memberId,m.getId()) != null){
                             return ProductListResponseDto.toDto(m,true); //true
                         }
                         return ProductListResponseDto.toDto(m,false); //false

@@ -2,18 +2,18 @@
   <v-app>
     <v-container>
       <v-row align="center" class="fill-height; mt-15" justify="center">
-        <div class=" elevation-15" style="width: 600px; height: 600px" >
+        <div class=" elevation-15" style="width: 600px; height: 800px" >
           <h3 class="text-center pt-15 py-3 black--text">
             회 원 가 입
           </h3>
 
           <v-form class="pa-15 text-center" ref="form">
 
-            <v-text-field :rules="rules.nameRules" class=" pl-3 pr-3" label="Name" prepend-icon="mdi-account"
+            <v-text-field :rules="rules.nameRules" class="pt-0 pl-3 pr-3" label="Name" prepend-icon="mdi-account"
                           required type="text" v-model="member.username">
             </v-text-field>
 
-            <v-text-field :rules="rules.nameRules" class=" pl-3 pr-3" label="Nickname" prepend-icon="mdi-account"
+            <v-text-field :rules="rules.nameRules" class="pt-10 pl-3 pr-3" label="Nickname" prepend-icon="mdi-account"
                           required type="text" v-model="member.nickname">
             </v-text-field>
 
@@ -26,7 +26,25 @@
                           required type="password"
                           @keyup.enter="requestJoin">
             </v-text-field>
+
+
+            <v-text-field  class="pt-10 pl-3 pr-3" label="Area" prepend-icon="mdi-home"
+                           v-model="selectedArea"
+                           v-on:keyup.enter="findArea">
+            </v-text-field>
+            <v-select
+                class="pt-3 pl-3 pr-3 "
+                hide-details
+                style="width: 500px"
+                :items="areasInfo"
+                item-text="address"
+                label="거주지 ( 동 )"
+                no-data-text="거주지를 입력해주세요."
+                v-model="member.area"
+                dense
+            ></v-select>
             <v-btn
+                class="mt-5"
                 depressed
                 color="primary"
                 @click="requestJoin"
@@ -49,8 +67,10 @@ export default {
         username:'',
         nickname:'',
         password:'',
+        area:''
 
       },
+      selectedArea:'',
       rules: {
         emailRules: [],
         nameRules:[],
@@ -66,6 +86,9 @@ export default {
   methods:{
     requestJoin(){
       this.$store.dispatch('REQUEST_JOIN',this.member);
+    },
+    findArea(){
+      this.$store.dispatch('REQUEST_AREAS',this.selectedArea);
     },
     setRules(){
 
@@ -84,6 +107,11 @@ export default {
   },
   created() {
     this.setRules();
+  },
+  computed: {
+    areasInfo(){
+      return this.$store.state.areaStore.areas;
+    }
   }
 }
 </script>

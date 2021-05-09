@@ -25,10 +25,9 @@ public class ProductController {
         productService.addProduct(productRequestDto);
     }
 
-    @PostMapping("/{memberId}/{productId}")
-    public ResponseEntity<String> gg(@PathVariable Long memberId,
-                                     @PathVariable Long productId){
-        return new ResponseEntity<>(productService.tt(memberId, productId),HttpStatus.OK);
+    @PostMapping("/{productId}")
+    public ResponseEntity<String> gg(@PathVariable Long productId){
+        return new ResponseEntity<>(productService.pushInterest( productId),HttpStatus.OK);
     }
 
     @GetMapping("/all/{tagId}")

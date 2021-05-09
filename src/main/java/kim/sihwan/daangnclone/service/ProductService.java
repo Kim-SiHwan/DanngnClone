@@ -11,9 +11,11 @@ import kim.sihwan.daangnclone.repository.ProductRepository;
 import kim.sihwan.daangnclone.repository.SelectedAreaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +32,7 @@ public class ProductService {
     private final ProductTagService tagService;
     private final SelectedAreaRepository selectedAreaRepository;
     private final InterestedRepository interestedRepository;
-    private final RedisTemplate redisTemplate;
+    private final RedisTemplate<String,String> redisTemplate;
 
 
     @Transactional
@@ -49,22 +51,34 @@ public class ProductService {
         return product;
     }
 
-    public String addInterested(Long memberId, Long productId){
+    @Transactional
+    public String pushInterest(Long productId){
         String msg= "존재하지 않는 값이라 추가했음";
-        ProductInterested interested = interestedRepository.findByMemberIdAndProductId(memberId,productId);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        ProductInterested interested = interestedRepository.findByMemberUsernameAndProductId(username,productId);
         if(interested != null){
-            interestedRepository.delete(interested);
             msg="이미 존재하는 값이라 삭제했음";
+            removeInterest(interested.getId());
             return msg;
         }
 
         Product product = productRepository.findById(productId).orElseThrow(NoSuchElementException::new);
-        Member member = memberRepository.findById(memberId).orElseThrow(NoSuchElementException::new);
+        Member member = memberRepository.findMemberByUsername(username);
         ProductInterested productInterested = new ProductInterested();
         productInterested.addMember(member);
         productInterested.addProduct(product);
-        interestedRepository.save(productInterested);
+        addInterest(productInterested);
         return msg;
+    }
+
+    @Transactional
+    public void addInterest(ProductInterested interested){
+        interestedRepository.save(interested);
+    }
+
+    @Transactional
+    public void removeInterest(Long id){
+        interestedRepository.deleteById(id);
     }
 
 
@@ -73,22 +87,26 @@ public class ProductService {
     }
 
     public List<ProductListResponseDto> findAllProductsByTagId(Long tagId){
+
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        System.out.println(username);
         System.out.println("서비스왔어");
-        Member member = memberRepository.findById(1L).orElseThrow(NoSuchElementException::new);
+        Member member = memberRepository.findMemberByUsername(username);
         System.out.println(member.getUsername());
         SelectedArea selectedArea = selectedAreaRepository.findByMemberId(member.getId());
         System.out.println(selectedArea.getArea().getAddress());
         System.out.println(selectedArea.getArea().getDong());
-        ValueOperations<String,List<String>> vo = redisTemplate.opsForValue();
-        System.out.println(vo.get("a"));
+        ListOperations<String,String> vo = redisTemplate.opsForList();
+        System.out.println(vo.range(selectedArea.getArea().getAddress()+"::List",0L,-1L));
+
+
         Long memberId = member.getId();
         List<ProductListResponseDto> result = new ArrayList<>();
         List<String> al = new ArrayList<>();
 
+        al = vo.range(selectedArea.getArea().getAddress()+"::List",0L,-1L);
 
-        al= vo.get(selectedArea.getArea().getDong()+"::List");
-        SetOperations<String,Long> setOperations = redisTemplate.opsForSet();
-
+        System.out.println(al);
         //태그 나중에
 
 /*        al.forEach(dong->{
@@ -112,6 +130,7 @@ public class ProductService {
                     .sorted(Comparator.comparing(ProductListResponseDto::getId, Comparator.reverseOrder()))
                     .collect(Collectors.toList()));
         });
+        System.out.println("결과:"+result.size());
         if(tagId == 0){
 
 

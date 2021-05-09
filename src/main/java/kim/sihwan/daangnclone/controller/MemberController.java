@@ -34,6 +34,8 @@ public class MemberController {
     @PostMapping("/login")
     @ApiOperation(value = "로그인", notes = "회원 정보를 입력해 로그인")
     public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto){
+        System.out.println(loginRequestDto.getUsername());
+        System.out.println(loginRequestDto.getPassword());
         return new ResponseEntity<>(memberService.login(loginRequestDto), HttpStatus.OK);
     }
 

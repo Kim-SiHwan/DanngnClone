@@ -9,4 +9,8 @@ public interface AreaRepository extends JpaRepository<Area,Long> {
 
     List<Area> findAllByCityLike(String city);
 
+    List<Area> findAllByDongLike(String dong);
+
+    Area findByAddress(String address);
+
 }

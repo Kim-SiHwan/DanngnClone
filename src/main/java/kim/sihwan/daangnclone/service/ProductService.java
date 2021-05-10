@@ -18,6 +18,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,63 +32,35 @@ public class ProductService {
     private final MemberRepository memberRepository;
     private final ProductTagService tagService;
     private final SelectedAreaRepository selectedAreaRepository;
-    private final InterestedRepository interestedRepository;
-    private final RedisTemplate<String,String> redisTemplate;
+    private final ProductInterestedService interestedService;
+    private final RedisTemplate<String, String> redisTemplate;
 
-
+    //달린 태그를 통해서 카프카에 보낼 멤버 찾기.
     @Transactional
-    public Long addProduct(ProductRequestDto productRequestDto){
+    public Long addProduct(ProductRequestDto productRequestDto) {
         Product product = productAlbumService.addProductAlbums(productRequestDto);
         Member member = memberRepository.findMemberByNickname(productRequestDto.getNickname()).orElseThrow(NoSuchElementException::new);
         product.addMember(member);
         productRepository.save(product);
-        tagService.addProductTag(product,productRequestDto.getTags());
+        tagService.addProductTag(product, productRequestDto.getTags());
         return product.getId();
     }
 
-    public Product findById(Long productId){
+    public Product findById(Long productId) {
         Product product = productRepository.findById(productId).orElseThrow(NoSuchElementException::new);
         addRead(productId);
         return product;
     }
 
-    @Transactional
-    public String pushInterest(Long productId){
-        String msg= "존재하지 않는 값이라 추가했음";
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        ProductInterested interested = interestedRepository.findByMemberUsernameAndProductId(username,productId);
-        if(interested != null){
-            msg="이미 존재하는 값이라 삭제했음";
-            removeInterest(interested.getId());
-            return msg;
-        }
 
-        Product product = productRepository.findById(productId).orElseThrow(NoSuchElementException::new);
-        Member member = memberRepository.findMemberByUsername(username);
-        ProductInterested productInterested = new ProductInterested();
-        productInterested.addMember(member);
-        productInterested.addProduct(product);
-        addInterest(productInterested);
-        return msg;
-    }
-
-    @Transactional
-    public void addInterest(ProductInterested interested){
-        interestedRepository.save(interested);
-    }
-
-    @Transactional
-    public void removeInterest(Long id){
-        interestedRepository.deleteById(id);
-    }
-
-
-    public List<Product> findAll(){
+    public List<Product> findAll() {
         return productRepository.findAll();
     }
 
-    public List<ProductListResponseDto> findAllProductsByTagId(Long tagId){
+    public List<ProductListResponseDto> findAllProductsByTagId(Long tagId) {
 
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         System.out.println(username);
         System.out.println("서비스왔어");
@@ -96,15 +69,13 @@ public class ProductService {
         SelectedArea selectedArea = selectedAreaRepository.findByMemberId(member.getId());
         System.out.println(selectedArea.getArea().getAddress());
         System.out.println(selectedArea.getArea().getDong());
-        ListOperations<String,String> vo = redisTemplate.opsForList();
-        System.out.println(vo.range(selectedArea.getArea().getAddress()+"::List",0L,-1L));
+        ListOperations<String, String> vo = redisTemplate.opsForList();
+        System.out.println(vo.range(selectedArea.getArea().getAddress() + "::List", 0L, -1L));
 
 
         Long memberId = member.getId();
-        List<ProductListResponseDto> result = new ArrayList<>();
-        List<String> al = new ArrayList<>();
-
-        al = vo.range(selectedArea.getArea().getAddress()+"::List",0L,-1L);
+        List<ProductListResponseDto> tempResult = new ArrayList<>();
+        List<String> al = vo.range(selectedArea.getArea().getAddress() + "::List", 0L, -1L);
 
         System.out.println(al);
         //태그 나중에
@@ -117,21 +88,35 @@ public class ProductService {
                     .collect(Collectors.toList()));
         });*/
 
-        al.forEach(dong->{
-            result.addAll(productRepository.findAllByArea(dong)
-                    .stream()
-                    .map(m-> {
-                        if(interestedRepository.findByMemberIdAndProductId(memberId,m.getId()) != null){
-                            return ProductListResponseDto.toDto(m,true); //true
-                        }
-                        return ProductListResponseDto.toDto(m,false); //false
+        List<ProductInterested> interestedList = interestedService.gg();
 
-                    })
-                    .sorted(Comparator.comparing(ProductListResponseDto::getId, Comparator.reverseOrder()))
-                    .collect(Collectors.toList()));
+
+        assert al != null;
+        al.forEach(dong -> {
+            tempResult.addAll(
+                    productRepository.findAllByArea(dong)
+                            .stream()
+                            .map(m -> {
+                                if (isInterested(interestedList, memberId, m.getId())) {
+                                    return ProductListResponseDto.toDto(m, true);
+                                }
+                                return ProductListResponseDto.toDto(m, false); //false
+
+                            })
+                            .sorted(Comparator.comparing(ProductListResponseDto::getId, Comparator.reverseOrder()))
+                            .collect(Collectors.toList()));
+
         });
-        System.out.println("결과:"+result.size());
-        if(tagId == 0){
+        List<ProductListResponseDto> result = tempResult
+                .stream()
+                .sorted(Comparator.comparing(ProductListResponseDto::getId, Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        System.out.println("결과:" + result.size());
+
+        stopWatch.stop();
+        System.out.println(stopWatch.prettyPrint());
+        if (tagId == 0) {
 
 
 
@@ -146,11 +131,11 @@ public class ProductService {
         }
 
 
-        al.forEach(dong->{
+        al.forEach(dong -> {
             result.addAll(tagService.getProductIdsByTagId(tagId)
                     .stream()
-                    .map(productTag -> ProductListResponseDto.toDto(productTag.getProduct(),true))
-                    .sorted(Comparator.comparing(ProductListResponseDto::getId,Comparator.reverseOrder()))
+                    .map(productTag -> ProductListResponseDto.toDto(productTag.getProduct(), true))
+                    .sorted(Comparator.comparing(ProductListResponseDto::getId, Comparator.reverseOrder()))
                     .collect(Collectors.toList()));
         });
 
@@ -165,11 +150,21 @@ public class ProductService {
     }
 
 
-
     @Transactional
-    public void addRead(Long productId){
+    public void addRead(Long productId) {
         Product product = productRepository.findById(productId).orElseThrow(NoSuchElementException::new);
         product.addRead();
+    }
+
+    public boolean isInterested(List<ProductInterested> interestedList, Long memberId, Long productId) {
+        boolean flag = false;
+        for (ProductInterested interested : interestedList) {
+            if (interested.getMember().getId().equals(memberId) && interested.getProduct().getId().equals(productId)) {
+                flag = true;
+                break;
+            }
+        }
+        return flag;
     }
 
 }
